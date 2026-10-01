@@ -2336,7 +2336,11 @@ function handleUpFiles(list){
 $('upVendors').addEventListener('click', function(e){
   var b = e.target.closest('[data-upv]'); if (!b) return;
   UP.vendor = b.dataset.upv; renderUpVendors();
-  if (UP.mode === 'price'){ UP.delArm = ''; priceUpPreview(); return; }
+  if (UP.mode === 'price'){
+    UP.delArm = ''; upMsg(''); priceUpPreview();
+    if (UP.pendingPrice && UP.pendingPrice.length) handlePriceFiles(UP.pendingPrice);
+    return;
+  }
   if (UP.result) upMsg('판매사: '+UP.vendor+' · 반영하기를 누르세요.', 'ok');
 });
 var drop = $('upDrop');
@@ -2512,7 +2516,8 @@ function priceUpPreview(){
 function handlePriceFiles(files){
   files = files.filter(function(f){ return /\.(pdf|json)$/i.test(f.name); });
   if (!files.length){ upMsg('PDF 가격표(.pdf) 또는 가격표 데이터(.json)만 올릴 수 있습니다.', 'err'); return; }
-  if (!UP.vendor){ upMsg('브랜드를 먼저 선택해 주세요.', 'err'); return; }
+  if (!UP.vendor){ UP.pendingPrice = files; upMsg('파일 '+files.length+'개 대기 중 · 위에서 브랜드를 선택하면 바로 읽어옵니다.', 'err'); return; }
+  UP.pendingPrice = null;
   var needAi = files.some(function(f){ return /\.pdf$/i.test(f.name); });
   if (needAi && !syncReady()){ upMsg('서버가 설정되지 않아 PDF 자동 변환을 할 수 없습니다.', 'err'); return; }
   if (needAi && !AUTH){ upMsg('관리자 로그인 후 PDF를 올려 주세요.', 'err'); return; }
