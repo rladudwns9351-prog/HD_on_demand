@@ -1314,7 +1314,7 @@ function buildManualTab(key, title, isDealer){
         '<span>옵션</span><b>'+esc(S.opt||'-')+'</b>'+
         '<span>외장 / 내장</span><b>'+esc((S.ext_color||'-')+' / '+(S.int_color||'-'))+'</b>'+
         '<span>차량가</span><b class="num">'+(S.price ? won(Number(S.price))+'원' : '-')+'</b>'+
-        (Number(S.discount) > 0 ? '<span>재고 할인</span><b class="num">-'+won(Number(S.discount))+'원</b>' : '')+
+        (isDealer && Number(S.discount) > 0 ? '<span>재고 할인</span><b class="num">-'+won(Number(S.discount))+'원</b>' : '')+
         (S.car_no ? '<span>차량번호</span><b>'+esc(S.car_no)+'</b>' : '')+
         (S.asset_no ? '<span>자산번호</span><b>'+esc(S.asset_no)+'</b>' : '')+
       '</div>';
@@ -1494,9 +1494,9 @@ function stkGuessFuel(s){
   if(/플러그인|PHEV/.test(s)) return '플러그인';
   if(/HEV|하이브리드|HYBRID/.test(s)) return '하이브리드';
   if(/디젤|DIESEL/.test(s)) return '디젤';
-  if(/LPG|LPI/.test(s)) return 'LPG';
+  if(/LPG|LPI|LPDI/.test(s)) return 'LPG';
   if(/아이오닉|전기|일렉트릭|ELECTRIC|(^|[^A-Z])EV[0-9]*($|[^A-Z])/.test(s)) return '전기';
-  if(/가솔린|GASOLINE|GDI|터보|TURBO/.test(s)) return '가솔린';
+  if(/가솔린|GASOLINE|GSL|GDI|터보|TURBO/.test(s)) return '가솔린';
   return '';
 }
 
@@ -1558,9 +1558,9 @@ function stkNormFuel(v){
   if(t==='EV'||t==='BEV'||t.indexOf('전기')>=0) return '전기';
   if(t==='HEV'||t.indexOf('하이브리드')>=0) return '하이브리드';
   if(t==='PHEV') return 'PHEV';
-  if(t.indexOf('가솔린')>=0||t.indexOf('휘발유')>=0) return '가솔린';
+  if(t.indexOf('가솔린')>=0||t.indexOf('휘발유')>=0||t==='GSL'||t.indexOf('GSL')>=0) return '가솔린';
   if(t.indexOf('디젤')>=0||t.indexOf('경유')>=0) return '디젤';
-  if(t.indexOf('LPG')>=0) return 'LPG';
+  if(t.indexOf('LPG')>=0||t.indexOf('LPDI')>=0||t.indexOf('LPI')>=0) return 'LPG';
   return String(v||'').trim();
 }
 
@@ -1908,7 +1908,7 @@ function mkNormalize(arr){
     var car = stkCleanCell(o.car_name); if (!car) return;
     var row = {
       car_name: car,
-      fuel: stkCleanCell(o.fuel) || stkGuessFuel(car) || mkFuelDefault(car),
+      fuel: mkFixFuel(car, stkCleanCell(o.fuel) ? stkNormFuel(stkCleanCell(o.fuel)) : stkGuessFuel(car)),
       opt: stkCleanCell(o.opt),
       ext_color: stkCleanCell(o.ext_color),
       int_color: stkCleanCell(o.int_color),
@@ -1979,6 +1979,15 @@ function mkGradeOf(name){
 }
 /* 유종 미상 보정: G90 은 가솔린 */
 function mkFuelDefault(name){ return mkModelOf(name) === 'G90' ? '가솔린' : ''; }
+/* 유종 보정 규칙: 포터 = LPG(전기 모델 제외), LPDI = LPG, GSL = 가솔린 */
+function mkFixFuel(name, fuel){
+  var n = String(name||'').toUpperCase();
+  var isEv = /전기|일렉트릭|ELECTRIC|(^|[^A-Z])EV($|[^A-Z])/.test(n) || fuel === '전기';
+  if (mkModelOf(name) === '포터' && !isEv) return 'LPG';
+  if (/LPDI/.test(n) && !isEv) return 'LPG';
+  if (!fuel && /(^|[^A-Z])GSL($|[^A-Z])/.test(n)) return '가솔린';
+  return fuel || mkFuelDefault(name);
+}
 var MROWS = [];
 function mkLoadRows(){
   MROWS = [];
@@ -1989,7 +1998,7 @@ function mkLoadRows(){
       MK_KEYS.forEach(function(k, i){ r[k] = a[i]; });
       r.model = mkModelOf(r.car_name);
       r.grade = mkGradeOf(r.car_name);
-      if (!r.fuel) r.fuel = mkFuelDefault(r.car_name);
+      r.fuel = mkFixFuel(r.car_name, r.fuel);
       r._t = [v, r.car_name, r.fuel, r.opt, r.ext_color, r.int_color, r.car_no, r.asset_no, r.promo, r.status].join(' ').toLowerCase().replace(/\s/g,'');
       MROWS.push(r);
     });
