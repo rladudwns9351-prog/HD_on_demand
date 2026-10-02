@@ -1312,10 +1312,10 @@ function buildManualTab(key, title, isDealer){
   function btn(attr, on, inner, extra){ return '<button class="opt-b'+(extra||'')+'" '+attr+' aria-pressed="'+(!!on)+'">'+inner+'</button>'; }
   /* 차종 분류·정렬 : 승용 / SUV / 승합 / 수소·전기차, 각 분류 안에서 차체 크기 작은 순 */
   var VEH_CATS = ['승용', 'SUV', '승합', '화물', '수소·전기차'];
-  var VEH_RULES = [ /* [id·이름 키워드, 분류(0승용 1SUV 2승합 3화물 4수소·전기), 크기순] 위에서부터 먼저 맞는 규칙 적용 */
-    [/pv5-cargo-compact|PV5 카고 컴팩트/i, 3, 30], [/pv5-cargo|PV5 카고/i, 3, 31], [/pv5-openbed|PV5 오픈베드/i, 3, 32],
-    [/st1/i, 3, 40], [/porter2-electric|포터.*일렉트릭/i, 3, 51], [/porter|포터/i, 3, 50],
-    [/bongo3-ev|봉고.*EV/i, 3, 61], [/bongo|봉고/i, 3, 60],
+  var VEH_RULES = [ /* 유종 우선 : 전기·수소차는 차체와 관계없이 수소·전기차, 나머지(가솔린·디젤·LPG·하이브리드)는 차체별. [id·이름 키워드, 분류(0승용 1SUV 2승합 3화물 4수소·전기), 크기순] */
+    [/porter2-electric|포터.*일렉트릭/i, 4, 90], [/bongo3-ev|봉고.*EV/i, 4, 92], [/st1/i, 4, 88],
+    [/pv5-cargo-compact|PV5 카고 컴팩트/i, 4, 82], [/pv5-cargo|PV5 카고/i, 4, 83], [/pv5-openbed|PV5 오픈베드/i, 4, 84],
+    [/porter|포터/i, 3, 50], [/bongo|봉고/i, 3, 60],
     [/ray-ev|레이 ?EV/i, 4, 10], [/kona-electric|코나 ?일렉트릭/i, 4, 30], [/ev3/i, 4, 20], [/ev4/i, 4, 35],
     [/ioniq5|아이오닉 ?5/i, 4, 40], [/ev5/i, 4, 45], [/ioniq6|아이오닉 ?6/i, 4, 50], [/ev6/i, 4, 55],
     [/nexo|넥쏘/i, 4, 60], [/ioniq9|아이오닉 ?9/i, 4, 70], [/ev9/i, 4, 75], [/pv5/i, 4, 80],
