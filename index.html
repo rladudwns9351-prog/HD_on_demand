@@ -220,7 +220,12 @@ $('gForm').addEventListener('submit', function(e){
   } else {
     var pw = $('gPw').value;
     if (!pw) { busy(false); msg('비밀번호를 입력해 주세요.', true); $('gPw').focus(); return; }
-    authReq('password', {email: email, password: pw}).then(function(a){
+    /* 비밀번호 대소문자 구분 없음 : 소문자로 먼저 로그인, 실패하면 입력한 그대로 한 번 더 */
+    var pwl = pw.toLowerCase();
+    authReq('password', {email: email, password: pwl}).catch(function(err){
+      if (pwl === pw) throw err;
+      return authReq('password', {email: email, password: pw});
+    }).then(function(a){
       ADM = a; LS.set(K.adm, a);
       return rpc('qw_admin_login', {p_ua: navigator.userAgent}, a.jwt);
     }).then(function(r){
