@@ -132,9 +132,14 @@ function autoCheck(){
   return r;
 }
 function devtoolsOpen(){
-  /* 1회 감지로 계정이 정지되므로, 순간 지연(PC 부하)에 의한 오감지를 막기 위해 연속 2번 측정해 둘 다 걸릴 때만 감지 */
-  function once(){ var t = performance.now(); try { (function(){}).constructor('debugger')(); } catch(e){} return performance.now() - t > 150; }
-  return once() && once();
+  /* 1회 감지로 계정이 정지되므로 오감지 방지 :
+     1초 넘게 멈춤 = 개발자도구에서 멈춘 상태(사람이 재개·닫기) → 바로 감지
+     0.15~1초 = PC 순간 부하일 수 있음 → 한 번 더 재서 또 걸릴 때만 감지 */
+  function ms(){ var t = performance.now(); try { (function(){}).constructor('debugger')(); } catch(e){} return performance.now() - t; }
+  var a = ms();
+  if (a <= 150) return false;
+  if (a > 1000) return true;
+  return ms() > 150;
 }
 function showBlock(){
   document.title = '접근 제한';
