@@ -132,9 +132,9 @@ function autoCheck(){
   return r;
 }
 function devtoolsOpen(){
-  var t = performance.now();
-  try { (function(){}).constructor('debugger')(); } catch(e){}
-  return performance.now() - t > 150;
+  /* 1회 감지로 계정이 정지되므로, 순간 지연(PC 부하)에 의한 오감지를 막기 위해 연속 2번 측정해 둘 다 걸릴 때만 감지 */
+  function once(){ var t = performance.now(); try { (function(){}).constructor('debugger')(); } catch(e){} return performance.now() - t > 150; }
+  return once() && once();
 }
 function showBlock(){
   document.title = '접근 제한';
@@ -142,13 +142,13 @@ function showBlock(){
   document.body.innerHTML = '<div class="blk"><div class="blk-c"><div class="blk-i">!</div>' +
     '<h1>비정상적인 접근이 감지되었습니다</h1>' +
     '<p>자동화 도구, 개발자 도구, 데이터 수집·분석 프로그램을 통한 접근은 허용되지 않습니다.<br>접근 기록이 관리자에게 전달되었습니다.</p>' +
-    '<p>정상적인 이용 중이었다면 30분 뒤 일반 브라우저로 다시 접속하거나 관리자에게 문의해 주세요.</p></div></div>';
+    '<p><b>로그인한 계정은 이용이 정지되며, 관리자가 해제해야 다시 이용할 수 있습니다.</b><br>관리자에게 문의하세요.</p></div></div>';
 }
 function block(reason){
   if (BLOCKED) return; BLOCKED = true;
   var tk = SESS && SESS.token, em = (SESS && SESS.email) || ($('gEmail') && $('gEmail').value) || '';
   clearInterval(HB); clearTimeout(EXPT);
-  LS.set(K.sess, null); LS.set(K.adm, null); LS.set(K.blk, Date.now() + 30 * 60000);
+  LS.set(K.sess, null); LS.set(K.adm, null); LS.set(K.blk, {at: Date.now(), email: em});   /* 새로고침 후 로그인 화면에 정지 안내 */
   showBlock();
   var done = function(){ location.reload(); };
   var t = setTimeout(done, 1500);
@@ -212,7 +212,7 @@ $('gForm').addEventListener('submit', function(e){
     rpc('qw_login', {p_email: email, p_ua: navigator.userAgent}).then(function(r){
       busy(false);
       if (!r || !r.ok) {
-        msg(r && r.code === 'locked' ? '로그인 시도가 너무 많거나 비정상 접근 기록이 있어 잠시 제한되었습니다. 잠시 후 다시 시도해 주세요.' : '등록되지 않은 이메일입니다. 관리자에게 권한 등록을 요청해 주세요.', true);
+        msg(r && r.code === 'blocked' ? (r.msg || '비정상 접근이 감지되어 이용이 정지되었습니다. 관리자에게 문의하세요.') : r && r.code === 'locked' ? '로그인 시도가 너무 많거나 비정상 접근 기록이 있어 잠시 제한되었습니다. 잠시 후 다시 시도해 주세요.' : '등록되지 않은 이메일입니다. 관리자에게 권한 등록을 요청해 주세요.', true);
         return;
       }
       rememberEmail(email); startSession(r);
@@ -238,6 +238,7 @@ $('gForm').addEventListener('submit', function(e){
 
 /* ---------- 세션 · 화면 불러오기 ---------- */
 function startSession(r){
+  LS.set(K.blk, null);
   SESS = {token: r.token, email: r.email, company: r.company || '', name: r.name || '', expires: r.expires, admin: !!r.admin};
   LS.set(K.sess, SESS);
   launch();
@@ -288,6 +289,7 @@ var REASON = {
   '강제 로그아웃': '관리자에 의해 로그아웃되었습니다.',
   '이메일 변경': '등록 이메일이 변경되었습니다. 새 이메일로 로그인해 주세요.',
   '비정상 접근': '비정상 접근으로 로그아웃되었습니다.',
+  '이용 정지': '비정상 접근이 감지되어 이용이 정지되었습니다. 관리자에게 문의하세요.',
   '로그아웃': '로그아웃되었습니다.'
 };
 function heartbeat(){
@@ -347,7 +349,8 @@ var API = {
 };
 
 /* ---------- 시작 ---------- */
-if ((LS.get(K.blk) || 0) > Date.now()) { BLOCKED = true; showBlock(); return; }
+var BK = LS.get(K.blk);
+if (BK && (typeof BK === 'object' || BK > Date.now())) { clearLocal(); showGate('비정상 접근이 감지되어 이용이 정지되었습니다. 관리자에게 문의하세요.', true); return; }   /* 정지 안내 : 로그인 화면에서 표시 (자동 재감지 없이) */
 if (!guard()) return;
 var note = ''; try { note = sessionStorage.getItem(K.msg) || ''; sessionStorage.removeItem(K.msg); } catch(e){}
 if (SESS && SESS.token && SESS.expires && new Date(SESS.expires).getTime() > Date.now() && (!SESS.admin || ADM)) {
