@@ -474,6 +474,7 @@ var PWA = (function(){
   var IOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(ua));
   var AND = /Android/i.test(ua), WIN = /Windows/i.test(ua);
   var INAPP = /KAKAOTALK|NAVER\(|DaumApps|Instagram|FBAN|FBAV|Line\/|; wv\)/i.test(ua);
+  var SAF = IOS && !INAPP && /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPT\/|Whale|SamsungBrowser/.test(ua);   /* 아이폰·아이패드 사파리 : 홈 화면에 추가로 설치 */
   var PURE = !!BR && BR.split('|').every(function(b){ return /^Chromium$|Not.?A.?Brand/i.test(b); });   /* 순수 크로미움 (크롬과 동일) */
   var CHROME_OK = !INAPP && (IOS ? /CriOS|EdgiOS/.test(ua)
     : (/Google Chrome|Microsoft Edge|HeadlessChrome/.test(BR) || PURE || (!UAD && /Chrome\/|Edg\//.test(ua) && !/OPR\/|SamsungBrowser|Whale|YaBrowser|Firefox|FxiOS/i.test(ua))));
@@ -511,7 +512,7 @@ var PWA = (function(){
   function show(mode){
     var bg = $('pwBg'); if (!bg) return;
     $('pwNo').hidden = false; $('pwNo').textContent = '설치 안 함'; $('pwGo').hidden = false; $('pwA').hidden = true; $('pwA').innerHTML = ''; $('pwB').className = 'pw-b';
-    $('pwF').textContent = '[설치 안 함]을 누르면 다시 묻지 않습니다 · 나중에 설치 : 로그인 화면 아래 [PC 앱으로 설치]';
+    $('pwF').textContent = '[설치 안 함]을 누르면 다시 묻지 않습니다 · 나중에 설치 : 로그인 화면 아래 ' + (MOB ? '[앱으로 설치]' : '[PC 앱으로 설치]');
     if (mode === 'install') {
       $('pwT').textContent = MOB ? '앱으로 설치하시겠어요?' : 'PC 앱으로 설치하시겠어요?';
       $('pwS').textContent = 'HD 견적 · 설치 1번이면 다음부터 바로 실행';
@@ -521,14 +522,25 @@ var PWA = (function(){
       $('pwGo').textContent = '앱 설치하기';
       $('pwGo').onclick = install;
     } else if (mode === 'manual') {
-      $('pwT').textContent = 'PC 앱으로 설치하시겠어요?';
-      $('pwS').textContent = 'HD 견적 · 크롬 주소창에서 바로 설치할 수 있어요';
-      $('pwL').innerHTML = li(['크롬 주소창 오른쪽 <b>설치 아이콘(⊕)</b> → <b>[설치]</b>', '아이콘이 없으면 오른쪽 위 <b>⋮ 메뉴 → 전송·저장·공유 → HD 견적 설치</b>', '설치 후 바탕화면 <b>HD 견적</b> 아이콘으로 실행 · 로그인 화면부터 시작', '이미 설치했다면 <b>[설치했어요]</b>']);
+      $('pwT').textContent = MOB ? '앱으로 설치하시겠어요?' : 'PC 앱으로 설치하시겠어요?';
+      $('pwS').textContent = MOB ? 'HD 견적 · 크롬 메뉴에서 바로 설치할 수 있어요' : 'HD 견적 · 크롬 주소창에서 바로 설치할 수 있어요';
+      $('pwL').innerHTML = li(MOB
+        ? ['크롬 오른쪽 위 <b>⋮ 메뉴 → 홈 화면에 추가</b> (또는 <b>앱 설치</b>) → <b>[설치]</b>', '설치 후 홈 화면 <b>HD 견적</b> 아이콘으로 실행 · 로그인 화면부터 시작', '이미 설치했다면 <b>[설치했어요]</b>']
+        : ['크롬 주소창 오른쪽 <b>설치 아이콘(⊕)</b> → <b>[설치]</b>', '아이콘이 없으면 오른쪽 위 <b>⋮ 메뉴 → 전송·저장·공유 → HD 견적 설치</b>', '설치 후 바탕화면 <b>HD 견적</b> 아이콘으로 실행 · 로그인 화면부터 시작', '이미 설치했다면 <b>[설치했어요]</b>']);
       $('pwGo').textContent = '설치했어요';
       $('pwGo').onclick = function(){ hide(); accepted(); };
       $('pwF').textContent = '잠시 후 [앱 설치하기] 버튼으로 바뀌면 바로 설치할 수 있습니다 · [설치 안 함] = 다시 묻지 않음';
+    } else if (mode === 'ios') {
+      $('pwT').textContent = '앱으로 설치하시겠어요?';
+      $('pwS').textContent = SAF ? 'HD 견적 · 사파리 공유 메뉴에서 홈 화면에 추가' : '아이폰·아이패드는 사파리에서 열어야 홈 화면에 설치됩니다';
+      $('pwL').innerHTML = li(SAF
+        ? ['화면 아래(또는 위) <b>공유 버튼(□↑)</b> 누르기', '목록에서 <b>홈 화면에 추가</b> → 오른쪽 위 <b>[추가]</b>', '홈 화면의 <b>HD 견적</b> 아이콘으로 실행 · 로그인 화면부터 시작', '이미 추가했다면 <b>[설치했어요]</b>']
+        : ['<b>[주소 복사]</b> → <b>사파리</b> 주소창에 붙여넣기 → 같은 이메일로 로그인', '사파리 <b>공유 버튼(□↑) → 홈 화면에 추가 → [추가]</b>', '홈 화면의 <b>HD 견적</b> 아이콘으로 실행']);
+      if (!SAF){ $('pwA').innerHTML = '<button type="button" data-pw="copy"><span>주소 복사<small>사파리 주소창에 붙여넣기 하세요</small></span><i>⧉</i></button>'; $('pwA').hidden = false; [].forEach.call($('pwA').querySelectorAll('[data-pw="copy"]'), function(b){ b.onclick = function(){ copyUrl(b); }; }); }
+      $('pwGo').textContent = '설치했어요';
+      $('pwGo').onclick = function(){ hide(); accepted(); };
     } else if (mode === 'other') {
-      $('pwT').textContent = '크롬에서 PC 앱을 설치해 주세요';
+      $('pwT').textContent = MOB ? '크롬에서 앱을 설치해 주세요' : '크롬에서 PC 앱을 설치해 주세요';
       $('pwS').textContent = INAPP ? '카카오톡 등 앱 안의 브라우저에서는 앱 설치가 되지 않습니다' : '지금 브라우저에서는 앱 설치가 되지 않습니다';
       $('pwL').innerHTML = li(MOB
         ? ['<b>크롬</b>에서 열면 앱으로 설치할 수 있습니다', '크롬이 없으면 <b>[크롬 설치하기]</b> → 설치 후 다시 열기']
@@ -557,7 +569,7 @@ var PWA = (function(){
   }
   function install(){
     hide();
-    if (!DP) { if (!standalone()) show(CHROME_OK ? 'manual' : 'other'); return; }
+    if (!DP) { if (!standalone()) show(IOS ? 'ios' : CHROME_OK ? 'manual' : 'other'); return; }
     var p = DP; DP = null; inst(false);
     try {
       p.prompt();
@@ -573,13 +585,12 @@ var PWA = (function(){
       srv.then(function(r){ if (r && r.state !== 'installed' && !r.reask) mark('installed'); });
       return;
     }
-    if (MOB) return;
     srv.then(function(r){
-      var ask = r ? r.ask : !local().declined;   /* 서버 설정(supabase_pwa.sql) 전 : 이 PC 기준 */
+      var ask = r ? r.ask : !local().declined;   /* 서버 설정(supabase_pwa.sql) 전 : 이 기기 기준 */
       if (!ask) return;
       WANT = true;
       if (DP) { offer('install'); return; }
-      setTimeout(function(){ if (DP) offer('install'); else offer(CHROME_OK ? 'manual' : 'other'); }, Math.max(300, 2500 - (Date.now() - T0)));
+      setTimeout(function(){ if (DP) offer('install'); else offer(IOS ? 'ios' : CHROME_OK ? 'manual' : 'other'); }, Math.max(300, 2500 - (Date.now() - T0)));
     });
   }
   $('pwNo').onclick = decline;
@@ -587,7 +598,8 @@ var PWA = (function(){
   $('gInst').textContent = MOB ? '앱으로 설치' : 'PC 앱으로 설치';
   $('gInst').onclick = install;
   if (CHROME_OK && !MOB && !standalone()) inst(true);
-  if (!CHROME_OK && !standalone()) { $('gInst').textContent = MOB ? '크롬에서 열기 · 크롬 설치 안내' : '크롬 다운로드 · PC 앱 설치 안내'; $('gInst').onclick = function(){ show('other'); }; inst(true); }
+  if (IOS && !standalone()) { $('gInst').textContent = SAF ? '앱으로 설치 (홈 화면에 추가)' : '사파리에서 앱으로 설치 · 안내'; $('gInst').onclick = function(){ show('ios'); }; inst(true); }
+  else if (!CHROME_OK && !standalone()) { $('gInst').textContent = MOB ? '크롬에서 열기 · 크롬 설치 안내' : '크롬 다운로드 · PC 앱 설치 안내'; $('gInst').onclick = function(){ show('other'); }; inst(true); }
   window.addEventListener('beforeinstallprompt', function(e){
     e.preventDefault(); DP = e;
     if (standalone()) return;
@@ -604,7 +616,7 @@ var PWA = (function(){
   $('wcoSet').onclick = function(){ if (MOUNTED) window.dispatchEvent(new Event('qw-settings')); };
   $('wcoTheme').onclick = function(){ if (MOUNTED) window.dispatchEvent(new Event('qw-theme')); };
   new MutationObserver(function(){ var d = document.documentElement.getAttribute('data-theme'); var dark = d ? d === 'dark' : (matchMedia('(prefers-color-scheme: dark)').matches); $('wcoTheme').textContent = dark ? '☀ 화이트' : '🌙 블랙'; }).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']});
-  return {standalone: standalone, afterLogin: afterLogin, open: function(){ if (DP) install(); else show(CHROME_OK ? 'manual' : 'other'); }};
+  return {standalone: standalone, afterLogin: afterLogin, open: function(){ if (DP) install(); else show(IOS ? 'ios' : CHROME_OK ? 'manual' : 'other'); }};
 })();
 
 /* ---------- 시작 ---------- */
