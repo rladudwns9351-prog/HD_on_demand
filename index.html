@@ -7,6 +7,15 @@
 <meta name="googlebot" content="noindex,nofollow,noarchive,nosnippet">
 <meta name="referrer" content="no-referrer">
 <title>선도구매 재고 견적요청</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#003cad">
+<meta name="application-name" content="HD 견적">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="HD 견적">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
@@ -56,6 +65,29 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 .blk-i{width:64px;height:64px;border-radius:50%;margin:0 auto;display:grid;place-items:center;background:#3b1a18;color:#ff8a80;font-size:32px;font-weight:700}
 .blk h1{margin:0;font-size:22px}
 .blk p{margin:0;color:#aab3c5;font-size:14px;line-height:1.7}
+/* ---- PC 앱(PWA) 설치 안내 ---- */
+.g-inst{justify-self:center;color:var(--accent);font-weight:600}
+.pw-bg{position:fixed;inset:0;z-index:99999;background:rgba(14,19,32,.45);display:grid;place-items:center;padding:16px}
+.pw{width:100%;max-width:440px;background:var(--surface);color:var(--ink);border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.25);padding:26px 26px 18px;display:grid;gap:16px}
+.pw-h{display:flex;gap:14px;align-items:center}
+.pw-h img{width:58px;height:58px;border-radius:14px;flex:none}
+.pw-h h2{margin:0;font-size:19px;font-weight:700;letter-spacing:-.01em}
+.pw-h p{margin:3px 0 0;font-size:13px;color:var(--ink-2)}
+.pw-l{list-style:none;margin:0;padding:0;display:grid;gap:9px;font-size:14px;color:var(--ink-2)}
+.pw-l li{display:flex;gap:9px;align-items:flex-start}
+.pw-l li::before{content:"✓";color:var(--accent);font-weight:700;flex:none}
+.pw-l b{color:var(--accent);font-weight:700}
+.pw-b{display:grid;grid-template-columns:1fr 1.6fr;gap:8px}
+.pw-b.one{grid-template-columns:1fr}
+.pw-b button{height:46px;border-radius:10px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;border:0}
+.pw-no{background:var(--surface-2);color:var(--ink-2)}
+.pw-go{background:var(--accent);color:var(--accent-ink)}
+.pw-f{text-align:center;font-size:12px;color:var(--ink-3)}
+.pw-a{display:grid;gap:8px}
+.pw-a a,.pw-a button{width:100%;margin:0;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:50px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:14.5px;font-weight:700;text-decoration:none;cursor:pointer;text-align:left}
+.pw-a .pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.pw-a small{display:block;font-size:12px;font-weight:500;opacity:.8;margin-top:2px}
+.pw-a i{font-style:normal;font-size:18px;opacity:.85;flex:none}
 </style>
 </head>
 <body>
@@ -74,14 +106,24 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
       <input type="file" id="gUpFile" accept=".json,application/json">
     </div>
     <div class="g-foot"><span class="g-mode" id="gModeLbl">영업 담당자</span><button class="g-link" id="gMode" type="button">관리자 로그인</button></div>
+    <button class="g-link g-inst" id="gInst" type="button" hidden>PC 앱으로 설치</button>
   </form>
 </div>
 <div id="app" hidden></div>
+<div class="pw-bg" id="pwBg" hidden>
+  <div class="pw" role="dialog" aria-modal="true" aria-labelledby="pwT">
+    <div class="pw-h"><img src="icon-192.png" alt=""><div><h2 id="pwT"></h2><p id="pwS"></p></div></div>
+    <ul class="pw-l" id="pwL"></ul>
+    <div class="pw-a" id="pwA" hidden></div>
+    <div class="pw-b" id="pwB"><button type="button" class="pw-no" id="pwNo">다음에</button><button type="button" class="pw-go" id="pwGo"></button></div>
+    <div class="pw-f" id="pwF"></div>
+  </div>
+</div>
 <script>
 (function(){
 'use strict';
 var CFG = {url: 'https://eicishonomqyyozdifsw.supabase.co', key: 'sb_publishable_MNvwxbwUTbkoisLu_3TKcA_D94jGxWc'};
-var K = {sess: 'qw_s', adm: 'qw_a', mail: 'qw_m', amail: 'qw_am', blk: 'qw_b', msg: 'qw_msg'};
+var K = {sess: 'qw_s', adm: 'qw_a', mail: 'qw_m', amail: 'qw_am', blk: 'qw_b', msg: 'qw_msg', pwa: 'qw_pwa'};
 var LS = {
   get: function(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } },
   set: function(k, v){ try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
@@ -186,6 +228,8 @@ function fillSaved(){
   var s = LS.get(adminMode ? K.amail : K.mail);
   $('gSave').checked = !!(s && s.on);
   $('gEmail').value = (s && s.on && s.email) || '';
+  /* 앱 창 : 저장된 이메일이 없으면 마지막 로그인 이메일 자동 입력 */
+  if (!$('gEmail').value && !adminMode && typeof PWA !== 'undefined' && PWA.standalone()) { var ls = LS.get(K.sess); if (ls && ls.email && !ls.admin) $('gEmail').value = ls.email; }
 }
 function setMode(admin){
   adminMode = !!admin;
@@ -246,6 +290,7 @@ function startSession(r){
   LS.set(K.blk, null);
   SESS = {token: r.token, email: r.email, company: r.company || '', name: r.name || '', expires: r.expires, admin: !!r.admin};
   LS.set(K.sess, SESS);
+  try { sessionStorage.setItem('qw_app', '1'); } catch(e){}
   launch();
 }
 function launch(){
@@ -269,6 +314,7 @@ function mount(b){
   try { (new Function('SHELL', b.js))(API); }
   catch(err){ $('app').hidden = true; $('gate').hidden = false; msg('화면 실행 오류 : ' + err.message, true); return; }
   startTimers();
+  try { PWA.afterLogin(); } catch(e){}
 }
 function uploadApp(file){
   return new Promise(function(res, rej){
@@ -353,12 +399,149 @@ var API = {
   server: {url: CFG.url, key: CFG.key}
 };
 
+/* ---------- PC 앱(PWA) 설치 ----------
+   영업자 PC 로그인 후 : 안내 전이거나 관리자가 [앱설치 재안내]를 눌렀을 때만 설치 안내 (서버 qw_pwa_get · supabase_pwa.sql)
+     · 크롬·엣지 : [앱 설치하기] = 브라우저 설치 확인창 → 설치 후 바탕화면 "HD 견적" 아이콘으로 실행 (앱은 로그인 화면부터)
+     · 그 외 브라우저 : 크롬 다운로드 · 크롬으로 열기 안내
+     · [설치 안 함] = 다시 묻지 않음 (관리자 재안내 전까지) · 로그인 화면 [PC 앱으로 설치] 링크로 언제든 설치
+   휴대폰 : 자동 안내 없음 (로그인 화면 링크만) · 저장(캐시) 없음 → 업데이트 시 재설치 불필요 */
+var PWA = (function(){
+  var ua = navigator.userAgent || '', DP = null, shown = false, WANT = false, T0 = Date.now();
+  var MOB = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(ua));
+  /* 크롬·엣지 여부 : 그 외 브라우저(파이어폭스·사파리·웨일·삼성인터넷·카카오톡 등 앱 안 브라우저)는 크롬 열기·설치 안내 */
+  var UAD = navigator.userAgentData, BR = (UAD && UAD.brands || []).map(function(b){ return b.brand; }).join('|');
+  var IOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(ua));
+  var AND = /Android/i.test(ua), WIN = /Windows/i.test(ua);
+  var INAPP = /KAKAOTALK|NAVER\(|DaumApps|Instagram|FBAN|FBAV|Line\/|; wv\)/i.test(ua);
+  var PURE = !!BR && BR.split('|').every(function(b){ return /^Chromium$|Not.?A.?Brand/i.test(b); });   /* 순수 크로미움 (크롬과 동일) */
+  var CHROME_OK = !INAPP && (IOS ? /CriOS|EdgiOS/.test(ua)
+    : (/Google Chrome|Microsoft Edge|HeadlessChrome/.test(BR) || PURE || (!UAD && /Chrome\/|Edg\//.test(ua) && !/OPR\/|SamsungBrowser|Whale|YaBrowser|Firefox|FxiOS/i.test(ua))));
+  var URL0 = location.href.split('#')[0];
+  function esc(t){ return String(t).replace(/[&<>"']/g, function(c){ return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
+  var CHROME_DL = IOS ? 'https://apps.apple.com/kr/app/id535886823' : AND ? 'https://play.google.com/store/apps/details?id=com.android.chrome' : 'https://www.google.com/intl/ko/chrome/';
+  function chromeOpenUrl(){
+    if (AND) return 'intent://' + URL0.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(CHROME_DL) + ';end';
+    if (IOS) return URL0.replace(/^https:\/\//, 'googlechromes://').replace(/^http:\/\//, 'googlechrome://');
+    return '';
+  }
+  function copyUrl(btn){
+    var done = function(){ btn.querySelector('span').innerHTML = '주소를 복사했습니다<small>크롬 주소창에 붙여넣기 (Ctrl+V) 하세요</small>'; };
+    try { navigator.clipboard.writeText(URL0).then(done, function(){ prompt('주소를 복사해 주세요.', URL0); }); } catch(e){ prompt('주소를 복사해 주세요.', URL0); }
+  }
+  function standalone(){
+    try { return navigator.standalone === true || ['standalone', 'fullscreen', 'minimal-ui', 'window-controls-overlay'].some(function(m){ return matchMedia('(display-mode: ' + m + ')').matches; }); } catch(e){ return false; }
+  }
+  function local(){ return LS.get(K.pwa) || {}; }
+  function setLocal(o){ LS.set(K.pwa, Object.assign(local(), o)); }
+  function allowed(){ return !standalone() && !BLOCKED && !LS.get(K.blk) && $('pwBg'); }
+  function hide(){ var b = $('pwBg'); if (b) b.hidden = true; }
+  function inst(on){ var g = $('gInst'); if (g) g.hidden = !on || BLOCKED; }
+  function li(a){ return a.map(function(t){ return '<li><span>' + t + '</span></li>'; }).join(''); }
+  function mark(st){
+    if (!SESS || !SESS.token || SESS.admin) return;
+    rpc('qw_pwa_set', {p_token: SESS.token, p_state: st, p_ua: navigator.userAgent}).catch(function(){});
+  }
+  function decline(){ hide(); setLocal({declined: Date.now()}); mark('declined'); }
+  function accepted(){
+    setLocal({installed: Date.now(), declined: 0});
+    if (SESS && SESS.email && !SESS.admin) LS.set(K.mail, {on: true, email: SESS.email});   /* 앱 로그인 화면에 이메일 자동 입력 */
+    mark('installed');
+  }
+  function show(mode){
+    var bg = $('pwBg'); if (!bg) return;
+    $('pwNo').hidden = false; $('pwNo').textContent = '설치 안 함'; $('pwGo').hidden = false; $('pwA').hidden = true; $('pwA').innerHTML = ''; $('pwB').className = 'pw-b';
+    $('pwF').textContent = '[설치 안 함]을 누르면 다시 묻지 않습니다 · 나중에 설치 : 로그인 화면 아래 [PC 앱으로 설치]';
+    if (mode === 'install') {
+      $('pwT').textContent = MOB ? '앱으로 설치하시겠어요?' : 'PC 앱으로 설치하시겠어요?';
+      $('pwS').textContent = 'HD 견적 · 설치 1번이면 다음부터 바로 실행';
+      $('pwL').innerHTML = li(MOB
+        ? ['홈 화면에 <b>아이콘으로 바로 실행</b>', '주소창 없는 <b>전용 앱 화면</b> · 로그인 화면부터 시작', '로그인·데이터·업데이트는 <b>지금과 동일</b> (재설치 불필요)']
+        : ['바탕화면·작업표시줄 <b>아이콘으로 바로 실행</b>', '주소창·탭 없는 <b>전용 프로그램 창</b> · 로그인 화면부터 시작', '로그인·데이터·업데이트는 <b>지금과 동일</b> (재설치 불필요)']);
+      $('pwGo').textContent = '앱 설치하기';
+      $('pwGo').onclick = install;
+    } else if (mode === 'other') {
+      $('pwT').textContent = '크롬에서 PC 앱을 설치해 주세요';
+      $('pwS').textContent = INAPP ? '카카오톡 등 앱 안의 브라우저에서는 앱 설치가 되지 않습니다' : '지금 브라우저에서는 앱 설치가 되지 않습니다';
+      $('pwL').innerHTML = li(MOB
+        ? ['<b>크롬</b>에서 열면 앱으로 설치할 수 있습니다', '크롬이 없으면 <b>[크롬 설치하기]</b> → 설치 후 다시 열기']
+        : ['크롬이 없으면 : <b>[크롬 다운로드]</b> → 설치', '<b>[주소 복사]</b> → 크롬 주소창에 붙여넣기 → 같은 이메일로 로그인', '크롬에 뜨는 안내창의 <b>[앱 설치하기]</b> → 바탕화면 <b>HD 견적</b> 아이콘으로 실행']);
+      var A = [], co = chromeOpenUrl();
+      if (co) A.push('<a class="pri" href="' + esc(co) + '"><span>크롬으로 열기' + (AND ? '<small>크롬이 없으면 설치 화면(Play 스토어)으로 이동</small>' : '<small>크롬이 설치되어 있으면 바로 열립니다</small>') + '</span><i>↗</i></a>');
+      A.push('<a' + (co ? '' : ' class="pri"') + ' href="' + esc(CHROME_DL) + '" target="_blank" rel="noopener"><span>' + (MOB ? '크롬 설치하기' : '크롬 다운로드') + '<small>' + (IOS ? 'App Store' : AND ? 'Play 스토어' : 'google.com/chrome · 무료 · 설치 후 아래 [주소 복사]') + '</small></span><i>⬇</i></a>');
+      A.push('<button type="button" data-pw="copy"><span>주소 복사<small>' + (co ? '다른 브라우저에 붙여넣기' : '크롬 주소창에 붙여넣기 하세요') + '</small></span><i>⧉</i></button>');
+      if (WIN && !MOB) A.push('<a href="microsoft-edge:' + esc(URL0) + '"><span>엣지로 바로 열기<small>윈도우 기본 브라우저 · 크롬 없이도 앱 설치 가능</small></span><i>↗</i></a>');
+      $('pwA').innerHTML = A.join(''); $('pwA').hidden = false;
+      [].forEach.call($('pwA').querySelectorAll('[data-pw="copy"]'), function(b){ b.onclick = function(){ copyUrl(b); }; });
+      $('pwGo').hidden = true; $('pwB').className = 'pw-b one';
+    } else if (mode === 'done') {
+      $('pwT').textContent = '설치가 완료되었습니다';
+      $('pwS').textContent = '다음부터는 아이콘으로 바로 실행하세요';
+      $('pwL').innerHTML = li(MOB ? ['홈 화면의 <b>HD 견적</b> 아이콘으로 실행 → 로그인'] : ['바탕화면·시작 메뉴의 <b>HD 견적</b> 아이콘으로 실행 → <b>로그인</b> (이메일 자동 입력)', '작업표시줄 고정 : 앱 실행 후 작업표시줄 아이콘 우클릭 → <b>작업 표시줄에 고정</b>']);
+      $('pwNo').hidden = true; $('pwB').className = 'pw-b one'; $('pwF').textContent = '';
+      $('pwGo').textContent = '확인';
+      $('pwGo').onclick = hide;
+    }
+    bg.hidden = false;
+  }
+  function offer(mode){
+    if (shown || !allowed()) return;
+    shown = true; show(mode);
+  }
+  function install(){
+    hide();
+    if (!DP) { if (!standalone()) show('other'); return; }
+    var p = DP; DP = null; inst(false);
+    try {
+      p.prompt();
+      p.userChoice.then(function(c){ if (c && c.outcome === 'accepted') accepted(); else decline(); }, function(){});
+    } catch(e){}
+  }
+  /* 로그인 후 (화면이 열린 뒤) 호출 */
+  function afterLogin(){
+    if (!SESS || !SESS.token || SESS.admin || BLOCKED) return;
+    var srv = rpc('qw_pwa_get', {p_token: SESS.token}).then(function(r){ return r && r.ok ? r : null; }, function(){ return null; });
+    if (standalone()) {   /* 앱으로 실행 중 = 설치됨 (관리자 재안내 요청은 그대로 둠 → 다른 PC 브라우저에서 안내) */
+      srv.then(function(r){ if (r && r.state !== 'installed' && !r.reask) mark('installed'); });
+      return;
+    }
+    if (MOB) return;
+    srv.then(function(r){
+      var ask = r ? r.ask : !local().declined;   /* 서버 설정(supabase_pwa.sql) 전 : 이 PC 기준 */
+      if (!ask) return;
+      WANT = true;
+      if (DP) { offer('install'); return; }
+      setTimeout(function(){ if (!DP && !CHROME_OK) offer('other'); }, Math.max(300, 2500 - (Date.now() - T0)));
+    });
+  }
+  $('pwNo').onclick = decline;
+  document.addEventListener('keydown', function(e){ var b = $('pwBg'); if (e.key === 'Escape' && b && !b.hidden) hide(); });
+  $('gInst').textContent = MOB ? '앱으로 설치' : 'PC 앱으로 설치';
+  $('gInst').onclick = install;
+  if (!CHROME_OK && !standalone()) { $('gInst').textContent = MOB ? '크롬에서 열기 · 크롬 설치 안내' : '크롬 다운로드 · PC 앱 설치 안내'; $('gInst').onclick = function(){ show('other'); }; inst(true); }
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault(); DP = e;
+    if (standalone()) return;
+    $('gInst').textContent = MOB ? '앱으로 설치' : 'PC 앱으로 설치'; $('gInst').onclick = install;
+    inst(true);
+    if (WANT) offer('install');
+  });
+  window.addEventListener('appinstalled', function(){ DP = null; inst(false); accepted(); show('done'); });
+  if (standalone()) document.title = 'HD 견적';
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js', {scope: './'}).catch(function(){}); });
+  }
+  return {standalone: standalone, afterLogin: afterLogin};
+})();
+
 /* ---------- 시작 ---------- */
 var BK = LS.get(K.blk);
 if (BK && (typeof BK === 'object' || BK > Date.now())) { clearLocal(); showGate('비정상 접근이 감지되어 이용이 정지되었습니다. 관리자에게 문의하세요.', true); return; }   /* 정지 안내 : 로그인 화면에서 표시 (자동 재감지 없이) */
 if (!guard()) return;
 var note = ''; try { note = sessionStorage.getItem(K.msg) || ''; sessionStorage.removeItem(K.msg); } catch(e){}
-if (SESS && SESS.token && SESS.expires && new Date(SESS.expires).getTime() > Date.now() && (!SESS.admin || ADM)) {
+var APPNEW = false; try { APPNEW = PWA.standalone() && !sessionStorage.getItem('qw_app'); } catch(e){}   /* 앱 창 새로 실행 = 로그인 화면부터 */
+if (APPNEW) {
+  showGate(note, false);   /* 브라우저 쪽 로그인은 그대로 둠 */
+} else if (SESS && SESS.token && SESS.expires && new Date(SESS.expires).getTime() > Date.now() && (!SESS.admin || ADM)) {
   showGate(); $('gate').hidden = false; msg('로그인 확인 중…'); busy(true);
   rpc('qw_session', {p_token: SESS.token}).then(function(r){
     busy(false);
