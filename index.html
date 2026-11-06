@@ -392,6 +392,7 @@ var API = {
       return r;
     });
   },
+  token: function(){ return SESS ? SESS.token : null; },
   adminToken: adminToken,
   adminRpc: function(fn, args){ return adminToken().then(function(t){ return rpc(fn, args || {}, t); }); },
   uploadApp: uploadApp,
@@ -406,7 +407,7 @@ var API = {
      · [설치 안 함] = 다시 묻지 않음 (관리자 재안내 전까지) · 로그인 화면 [PC 앱으로 설치] 링크로 언제든 설치
    휴대폰 : 자동 안내 없음 (로그인 화면 링크만) · 저장(캐시) 없음 → 업데이트 시 재설치 불필요 */
 var PWA = (function(){
-  var ua = navigator.userAgent || '', DP = null, shown = false, WANT = false, T0 = Date.now();
+  var ua = navigator.userAgent || '', DP = null, shown = false, WANT = false, T0 = Date.now(), CUR = '';
   var MOB = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(ua));
   /* 크롬·엣지 여부 : 그 외 브라우저(파이어폭스·사파리·웨일·삼성인터넷·카카오톡 등 앱 안 브라우저)는 크롬 열기·설치 안내 */
   var UAD = navigator.userAgentData, BR = (UAD && UAD.brands || []).map(function(b){ return b.brand; }).join('|');
@@ -434,7 +435,7 @@ var PWA = (function(){
   function local(){ return LS.get(K.pwa) || {}; }
   function setLocal(o){ LS.set(K.pwa, Object.assign(local(), o)); }
   function allowed(){ return !standalone() && !BLOCKED && !LS.get(K.blk) && $('pwBg'); }
-  function hide(){ var b = $('pwBg'); if (b) b.hidden = true; }
+  function hide(){ var b = $('pwBg'); if (b) b.hidden = true; CUR = ''; }
   function inst(on){ var g = $('gInst'); if (g) g.hidden = !on || BLOCKED; }
   function li(a){ return a.map(function(t){ return '<li><span>' + t + '</span></li>'; }).join(''); }
   function mark(st){
@@ -459,6 +460,13 @@ var PWA = (function(){
         : ['바탕화면·작업표시줄 <b>아이콘으로 바로 실행</b>', '주소창·탭 없는 <b>전용 프로그램 창</b> · 로그인 화면부터 시작', '로그인·데이터·업데이트는 <b>지금과 동일</b> (재설치 불필요)']);
       $('pwGo').textContent = '앱 설치하기';
       $('pwGo').onclick = install;
+    } else if (mode === 'manual') {
+      $('pwT').textContent = 'PC 앱으로 설치하시겠어요?';
+      $('pwS').textContent = 'HD 견적 · 크롬 주소창에서 바로 설치할 수 있어요';
+      $('pwL').innerHTML = li(['크롬 주소창 오른쪽 <b>설치 아이콘(⊕)</b> → <b>[설치]</b>', '아이콘이 없으면 오른쪽 위 <b>⋮ 메뉴 → 전송·저장·공유 → HD 견적 설치</b>', '설치 후 바탕화면 <b>HD 견적</b> 아이콘으로 실행 · 로그인 화면부터 시작', '이미 설치했다면 <b>[설치했어요]</b>']);
+      $('pwGo').textContent = '설치했어요';
+      $('pwGo').onclick = function(){ hide(); accepted(); };
+      $('pwF').textContent = '잠시 후 [앱 설치하기] 버튼으로 바뀌면 바로 설치할 수 있습니다 · [설치 안 함] = 다시 묻지 않음';
     } else if (mode === 'other') {
       $('pwT').textContent = '크롬에서 PC 앱을 설치해 주세요';
       $('pwS').textContent = INAPP ? '카카오톡 등 앱 안의 브라우저에서는 앱 설치가 되지 않습니다' : '지금 브라우저에서는 앱 설치가 되지 않습니다';
@@ -481,7 +489,7 @@ var PWA = (function(){
       $('pwGo').textContent = '확인';
       $('pwGo').onclick = hide;
     }
-    bg.hidden = false;
+    CUR = mode; bg.hidden = false;
   }
   function offer(mode){
     if (shown || !allowed()) return;
@@ -489,7 +497,7 @@ var PWA = (function(){
   }
   function install(){
     hide();
-    if (!DP) { if (!standalone()) show('other'); return; }
+    if (!DP) { if (!standalone()) show(CHROME_OK ? 'manual' : 'other'); return; }
     var p = DP; DP = null; inst(false);
     try {
       p.prompt();
@@ -510,20 +518,22 @@ var PWA = (function(){
       if (!ask) return;
       WANT = true;
       if (DP) { offer('install'); return; }
-      setTimeout(function(){ if (!DP && !CHROME_OK) offer('other'); }, Math.max(300, 2500 - (Date.now() - T0)));
+      setTimeout(function(){ if (DP) offer('install'); else offer(CHROME_OK ? 'manual' : 'other'); }, Math.max(300, 2500 - (Date.now() - T0)));
     });
   }
   $('pwNo').onclick = decline;
   document.addEventListener('keydown', function(e){ var b = $('pwBg'); if (e.key === 'Escape' && b && !b.hidden) hide(); });
   $('gInst').textContent = MOB ? '앱으로 설치' : 'PC 앱으로 설치';
   $('gInst').onclick = install;
+  if (CHROME_OK && !MOB && !standalone()) inst(true);
   if (!CHROME_OK && !standalone()) { $('gInst').textContent = MOB ? '크롬에서 열기 · 크롬 설치 안내' : '크롬 다운로드 · PC 앱 설치 안내'; $('gInst').onclick = function(){ show('other'); }; inst(true); }
   window.addEventListener('beforeinstallprompt', function(e){
     e.preventDefault(); DP = e;
     if (standalone()) return;
     $('gInst').textContent = MOB ? '앱으로 설치' : 'PC 앱으로 설치'; $('gInst').onclick = install;
     inst(true);
-    if (WANT) offer('install');
+    if (CUR === 'manual') show('install');   /* 주소창 안내 중 설치 신호 → [앱 설치하기] 로 전환 */
+    else if (WANT) offer('install');
   });
   window.addEventListener('appinstalled', function(){ DP = null; inst(false); accepted(); show('done'); });
   if (standalone()) document.title = 'HD 견적';
