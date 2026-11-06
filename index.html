@@ -97,8 +97,10 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 .upd{position:fixed;inset:0;z-index:100000;background:rgba(14,19,32,.55);display:grid;place-items:center;padding:16px}
 .upd>div{width:100%;max-width:380px;background:var(--surface);color:var(--ink);border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.25);padding:28px 26px;text-align:center;display:grid;gap:10px;justify-items:center}
 .upd h2{margin:0;font-size:18px;font-weight:700}.upd p{margin:0;font-size:13.5px;color:var(--ink-2);line-height:1.6}
-.upd .sp{width:34px;height:34px;border:4px solid var(--accent-soft);border-top-color:var(--accent);border-radius:50%;animation:updspin .9s linear infinite}
-@keyframes updspin{to{transform:rotate(360deg)}}
+.upd .upd-ic{width:56px;height:56px;border-radius:14px}
+.upd-g{width:100%;height:12px;border-radius:999px;background:var(--surface-2);overflow:hidden;margin-top:6px}
+.upd-g i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),#6f95ff);border-radius:999px;transition:width .25s ease}
+.upd-pct{font-size:13px;font-weight:700;color:var(--accent);font-family:ui-monospace,Menlo,Consolas,monospace}
 .pw-a{display:grid;gap:8px}
 .pw-a a,.pw-a button{width:100%;margin:0;display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:50px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:14.5px;font-weight:700;text-decoration:none;cursor:pointer;text-align:left}
 .pw-a .pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
@@ -126,8 +128,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
   </form>
 </div>
 <div id="app" hidden></div>
-<div id="wco"><img src="icon-192.png" alt="">HD 견적<span class="sp"></span><button type="button" id="wcoSet" title="설정">⚙ 설정</button></div>
-<div class="upd" id="upd" hidden><div><div class="sp"></div><h2>화면을 업데이트하고 있습니다</h2><p>관리자가 새 화면을 반영했습니다.<br>잠시 후 자동으로 새 화면이 열립니다.</p></div></div>
+<div id="wco"><img src="icon-192.png" alt="">HD 견적<span class="sp"></span><button type="button" id="wcoTheme" title="화면 화이트/블랙 전환">🌙 블랙</button><button type="button" id="wcoSet" title="설정">⚙ 설정</button></div>
+<div class="upd" id="upd" hidden><div><img class="upd-ic" src="icon-192.png" alt=""><h2 id="updT">화면을 업데이트하고 있습니다</h2><p id="updS">관리자가 새 화면을 반영했습니다.<br>잠시 후 자동으로 새 화면이 열립니다.</p><div class="upd-g"><i id="updBar"></i></div><div class="upd-pct" id="updPct">0%</div></div></div>
 <div class="pw-bg" id="pwBg" hidden>
   <div class="pw" role="dialog" aria-modal="true" aria-labelledby="pwT">
     <div class="pw-h"><img src="icon-192.png" alt=""><div><h2 id="pwT"></h2><p id="pwS"></p></div></div>
@@ -141,7 +143,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 (function(){
 'use strict';
 var CFG = {url: 'https://eicishonomqyyozdifsw.supabase.co', key: 'sb_publishable_MNvwxbwUTbkoisLu_3TKcA_D94jGxWc'};
-var K = {sess: 'qw_s', adm: 'qw_a', mail: 'qw_m', amail: 'qw_am', blk: 'qw_b', msg: 'qw_msg', pwa: 'qw_pwa'};
+var K = {sess: 'qw_s', adm: 'qw_a', mail: 'qw_m', amail: 'qw_am', blk: 'qw_b', msg: 'qw_msg', pwa: 'qw_pwa', appv: 'qw_v'};
 var LS = {
   get: function(k){ try { return JSON.parse(localStorage.getItem(k)); } catch(e){ return null; } },
   set: function(k, v){ try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
@@ -312,9 +314,27 @@ function startSession(r){
   try { sessionStorage.setItem('qw_app', '1'); } catch(e){}
   launch();
 }
+/* 업데이트 반영 게이지 : 관리자가 화면 파일을 바꾼 뒤 처음 열 때 (이 PC 에서 마지막으로 쓴 화면 버전과 다르면) */
+var UPG = {t: null, v: 0, at: 0};
+function updGauge(on, pct){
+  var u = $('upd'); if (!u) return;
+  if (!on){ clearInterval(UPG.t); u.hidden = true; return; }
+  u.hidden = false; $('updT').textContent = '업데이트 반영 중…'; $('updS').innerHTML = '관리자가 새 화면을 반영했습니다.<br>잠시만 기다려 주세요.';
+  var set = function(p){ UPG.v = p; $('updBar').style.width = p + '%'; $('updPct').textContent = Math.round(p) + '%'; };
+  if (pct != null){ set(pct); return; }
+  set(3); UPG.at = Date.now(); clearInterval(UPG.t);
+  UPG.t = setInterval(function(){ if (UPG.v < 88) set(UPG.v + (88 - UPG.v) * 0.08 + 0.4); }, 120);   /* 받는 동안 88% 까지 서서히 */
+}
 function launch(){
   msg('화면을 불러오는 중…'); busy(true);
-  rpc('qw_get', {p_token: SESS.token, p_kind: 'app'}).then(function(r){
+  var last = LS.get(K.appv) || '';
+  var pre = last ? rpc('qw_app_ver', {p_token: SESS.token}).then(function(r){ return r && r.ok && r.ver ? r.ver : ''; }, function(){ return ''; }) : Promise.resolve('');
+  pre.then(function(ver){
+    var gauge = !!(ver && last && ver !== last);
+    if (gauge) updGauge(true);
+    return rpc('qw_get', {p_token: SESS.token, p_kind: 'app'}).then(function(r){ return [r, gauge]; });
+  }).then(function(x){
+    var r = x[0], gauge = x[1];
     busy(false);
     if (!r || !r.ok) { expire('로그인이 만료되었습니다. 다시 로그인해 주세요.'); return; }
     if (!r.body || !r.body.js) {
@@ -323,8 +343,14 @@ function launch(){
       return;
     }
     APPV = r.saved_at || '';
-    mount(r.body);
-  }).catch(function(err){ busy(false); msg('서버에 연결하지 못했습니다. (' + err.message + ')', true); });
+    if (!gauge){ mount(r.body); if (APPV) LS.set(K.appv, APPV); return; }
+    clearInterval(UPG.t); updGauge(true, 96);
+    var wait = Math.max(0, 1500 - (Date.now() - UPG.at));
+    setTimeout(function(){
+      updGauge(true, 100); $('updT').textContent = '업데이트 완료'; $('updS').textContent = '새 화면으로 시작합니다.';
+      setTimeout(function(){ mount(r.body); if (APPV) LS.set(K.appv, APPV); updGauge(false); }, 600);   /* 게이지 100% 뒤에 화면 열기 */
+    }, wait);
+  }).catch(function(err){ busy(false); updGauge(false); msg('서버에 연결하지 못했습니다. (' + err.message + ')', true); });
 }
 /* 화면 자동 업데이트 : 관리자가 화면 파일을 바꾸면 안내 후 새로 열기 (supabase_appver.sql · 없으면 조용히 건너뜀) */
 var APPV = '', UPDATING = false, DVT = null, LEAVING = false;
@@ -333,9 +359,10 @@ function checkAppVer(){
   if (!SESS || !MOUNTED || UPDATING || !APPV) return;
   rpc('qw_app_ver', {p_token: SESS.token}).then(function(r){
     if (!r || !r.ok || !r.ver || r.ver === APPV) return;
-    UPDATING = true; $('upd').hidden = false; clearInterval(HB); clearInterval(DVT);
+    UPDATING = true; clearInterval(HB); clearInterval(DVT);
+    $('updT').textContent = '화면을 업데이트하고 있습니다'; $('updS').innerHTML = '관리자가 새 화면을 반영했습니다.<br>잠시 후 자동으로 새 화면이 열립니다.'; $('updBar').style.width = '0%'; $('updPct').textContent = ''; $('upd').hidden = false;
     try { sessionStorage.setItem('qw_app', '1'); } catch(e){}
-    setTimeout(function(){ location.reload(); }, 2500);
+    setTimeout(function(){ location.reload(); }, 1200);
   }).catch(function(){});
 }
 function mount(b){
@@ -575,6 +602,8 @@ var PWA = (function(){
     window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js', {scope: './'}).catch(function(){}); });
   }
   $('wcoSet').onclick = function(){ if (MOUNTED) window.dispatchEvent(new Event('qw-settings')); };
+  $('wcoTheme').onclick = function(){ if (MOUNTED) window.dispatchEvent(new Event('qw-theme')); };
+  new MutationObserver(function(){ var d = document.documentElement.getAttribute('data-theme'); var dark = d ? d === 'dark' : (matchMedia('(prefers-color-scheme: dark)').matches); $('wcoTheme').textContent = dark ? '☀ 화이트' : '🌙 블랙'; }).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']});
   return {standalone: standalone, afterLogin: afterLogin, open: function(){ if (DP) install(); else show(CHROME_OK ? 'manual' : 'other'); }};
 })();
 
