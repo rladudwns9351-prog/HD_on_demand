@@ -106,6 +106,20 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 .pw-a .pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .pw-a small{display:block;font-size:12px;font-weight:500;opacity:.8;margin-top:2px}
 .pw-a i{font-style:normal;font-size:18px;opacity:.85;flex:none}
+/* ---- 아이폰·아이패드 : 필수 동의 → 홈 화면에 추가 안내 ---- */
+.pw-agree{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:12px;padding:12px 13px;font-size:13px;line-height:1.55;color:var(--ink-2);cursor:pointer;background:var(--surface-2)}
+.pw-agree input{width:20px;height:20px;margin:1px 0 0;flex:none;accent-color:var(--accent)}
+.pw-agree b{color:var(--warn)}
+.pw-agree.on{border-color:var(--accent);background:var(--accent-soft)}
+.pw-go:disabled{opacity:.4;cursor:default}
+.pw-l.pw-n{counter-reset:pw}
+.pw-l.pw-n li::before{counter-increment:pw;content:counter(pw);width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:12px;display:grid;place-items:center;margin-top:-1px}
+.pw-sh{display:inline-block;width:17px;height:17px;vertical-align:-3px;margin:0 2px}
+.pw-arr{position:fixed;z-index:100000;left:50%;bottom:max(8px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:48px;height:48px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;box-shadow:0 6px 20px rgba(0,0,0,.3);animation:pwB 1s ease-in-out infinite;pointer-events:none}
+.pw-arr.top{left:auto;right:14px;bottom:auto;top:8px;transform:none}
+.pw-arr svg{width:26px;height:26px}
+.pw-arr.top svg{transform:rotate(180deg)}
+@keyframes pwB{0%,100%{margin-bottom:0;margin-top:0}50%{margin-bottom:-8px;margin-top:-8px}}
 </style>
 </head>
 <body>
@@ -138,6 +152,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
     <div class="pw-b" id="pwB"><button type="button" class="pw-no" id="pwNo">다음에</button><button type="button" class="pw-go" id="pwGo"></button></div>
     <div class="pw-f" id="pwF"></div>
   </div>
+  <div class="pw-arr" id="pwArr" hidden aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v15"/><path d="m5.5 12.5 6.5 6.5 6.5-6.5"/></svg></div>
 </div>
 <script>
 (function(){
@@ -496,7 +511,7 @@ var PWA = (function(){
   function local(){ return LS.get(K.pwa) || {}; }
   function setLocal(o){ LS.set(K.pwa, Object.assign(local(), o)); }
   function allowed(){ return !standalone() && !BLOCKED && !LS.get(K.blk) && $('pwBg'); }
-  function hide(){ var b = $('pwBg'); if (b) b.hidden = true; CUR = ''; }
+  function hide(){ var b = $('pwBg'); if (b) b.hidden = true; CUR = ''; var a = $('pwArr'); if (a) a.hidden = true; }
   function inst(on){ var g = $('gInst'); if (g) g.hidden = !on || BLOCKED; }
   function li(a){ return a.map(function(t){ return '<li><span>' + t + '</span></li>'; }).join(''); }
   function mark(st){
@@ -511,7 +526,8 @@ var PWA = (function(){
   }
   function show(mode){
     var bg = $('pwBg'); if (!bg) return;
-    $('pwNo').hidden = false; $('pwNo').textContent = '설치 안 함'; $('pwGo').hidden = false; $('pwA').hidden = true; $('pwA').innerHTML = ''; $('pwB').className = 'pw-b';
+    $('pwNo').onclick = decline;
+    $('pwNo').hidden = false; $('pwNo').textContent = '설치 안 함'; $('pwGo').hidden = false; $('pwGo').disabled = false; $('pwA').hidden = true; $('pwA').innerHTML = ''; $('pwB').className = 'pw-b'; $('pwL').className = 'pw-l'; $('pwArr').hidden = true;
     $('pwF').textContent = '[설치 안 함]을 누르면 다시 묻지 않습니다 · 나중에 설치 : 로그인 화면 아래 ' + (MOB ? '[앱으로 설치]' : '[PC 앱으로 설치]');
     if (mode === 'install') {
       $('pwT').textContent = MOB ? '앱으로 설치하시겠어요?' : 'PC 앱으로 설치하시겠어요?';
@@ -530,6 +546,27 @@ var PWA = (function(){
       $('pwGo').textContent = '설치했어요';
       $('pwGo').onclick = function(){ hide(); accepted(); };
       $('pwF').textContent = '잠시 후 [앱 설치하기] 버튼으로 바뀌면 바로 설치할 수 있습니다 · [설치 안 함] = 다시 묻지 않음';
+    } else if (mode === 'ios' && SAF) {   /* 아이폰·아이패드 사파리 : 필수 동의 후 홈 화면에 추가 안내 */
+      $('pwT').textContent = '앱으로 설치하시겠어요?';
+      $('pwS').textContent = 'HD 견적 · 홈 화면 아이콘으로 바로 실행';
+      $('pwL').innerHTML = li(['로그인·데이터·업데이트는 <b>지금과 동일</b> · PC와 견적 저장 연동', '설치는 사파리 <b>공유 → 홈 화면에 추가</b> (30초)']);
+      $('pwA').innerHTML = '<label class="pw-agree" id="pwAgL"><input type="checkbox" id="pwAg"><span><b>[필수]</b> 이 기기 홈 화면에 <b style="color:inherit">HD 견적</b> 앱 아이콘을 추가하고, 로그인 이메일을 이 기기에 저장하는 것에 동의합니다.</span></label>';
+      $('pwA').hidden = false;
+      $('pwGo').textContent = '동의하고 설치'; $('pwGo').disabled = true;
+      $('pwAg').onchange = function(){ $('pwGo').disabled = !this.checked; $('pwAgL').classList.toggle('on', this.checked); };
+      $('pwGo').onclick = function(){ if (!$('pwAg').checked) return; setLocal({agree: Date.now()}); show('ios2'); };
+    } else if (mode === 'ios2') {
+      var PAD = /iPad/i.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(ua));
+      var SH = '<svg class="pw-sh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8.5H6.5a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.5a1 1 0 0 0-1-1H16"/><path d="M12 3v11"/><path d="m8.5 6.5 3.5-3.5 3.5 3.5"/></svg>';
+      $('pwT').textContent = '홈 화면에 추가해 주세요';
+      $('pwS').textContent = '아래 순서대로 누르면 아이콘이 생깁니다';
+      $('pwL').className = 'pw-l pw-n';
+      $('pwL').innerHTML = li([(PAD ? '화면 <b>오른쪽 위</b>' : '화면 <b>아래</b>') + ' 공유 버튼 ' + SH + ' 누르기', '<b>홈 화면에 추가</b> → 오른쪽 위 <b>[추가]</b>', '홈 화면 <b>HD 견적</b> 아이콘으로 실행 → 처음 1번 로그인']);
+      $('pwNo').textContent = '닫기'; $('pwNo').onclick = hide;
+      $('pwGo').textContent = '추가했어요';
+      $('pwGo').onclick = function(){ hide(); accepted(); };
+      $('pwF').textContent = '목록에 없으면 공유 메뉴를 위로 올려 [홈 화면에 추가]를 찾아 주세요';
+      $('pwArr').className = 'pw-arr' + (PAD ? ' top' : ''); $('pwArr').hidden = false;
     } else if (mode === 'ios') {
       $('pwT').textContent = '앱으로 설치하시겠어요?';
       $('pwS').textContent = SAF ? 'HD 견적 · 사파리 공유 메뉴에서 홈 화면에 추가' : '아이폰·아이패드는 사파리에서 열어야 홈 화면에 설치됩니다';
