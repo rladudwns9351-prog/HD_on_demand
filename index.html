@@ -506,8 +506,9 @@ var PWA = (function(){
   }
   /* 로그인 후 (화면이 열린 뒤) 호출 */
   function afterLogin(){
-    if (!SESS || !SESS.token || SESS.admin || BLOCKED) return;
-    var srv = rpc('qw_pwa_get', {p_token: SESS.token}).then(function(r){ return r && r.ok ? r : null; }, function(){ return null; });
+    if (!SESS || !SESS.token || BLOCKED) return;
+    /* 관리자 : 서버 기록 없이 이 PC 기준으로만 안내 (설치 안 함 = 이 PC에서 다시 안 뜸) */
+    var srv = SESS.admin ? Promise.resolve(null) : rpc('qw_pwa_get', {p_token: SESS.token}).then(function(r){ return r && r.ok ? r : null; }, function(){ return null; });
     if (standalone()) {   /* 앱으로 실행 중 = 설치됨 (관리자 재안내 요청은 그대로 둠 → 다른 PC 브라우저에서 안내) */
       srv.then(function(r){ if (r && r.state !== 'installed' && !r.reask) mark('installed'); });
       return;
