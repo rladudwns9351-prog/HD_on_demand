@@ -67,6 +67,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 .blk p{margin:0;color:#aab3c5;font-size:14px;line-height:1.7}
 /* ---- PC 앱(PWA) 설치 안내 ---- */
 .g-inst{justify-self:center;color:var(--accent);font-weight:600}
+.g-inst.big{justify-self:stretch;margin-top:6px;padding:12px 14px;border:1.5px solid var(--accent);border-radius:12px;font-size:14.5px;font-weight:700;background:var(--surface,#fff)}
 .pw-bg{position:fixed;inset:0;z-index:99999;background:rgba(14,19,32,.45);display:grid;place-items:center;padding:16px}
 .pw{width:100%;max-width:440px;background:var(--surface);color:var(--ink);border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.25);padding:26px 26px 18px;display:grid;gap:16px}
 .pw-h{display:flex;gap:14px;align-items:center}
@@ -118,6 +119,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 .pw-arr{position:fixed;z-index:100000;left:50%;bottom:max(8px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:48px;height:48px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;box-shadow:0 6px 20px rgba(0,0,0,.3);animation:pwB 1s ease-in-out infinite;pointer-events:none}
 .pw-arr.top{left:auto;right:14px;bottom:auto;top:8px;transform:none}
 .pw-arr svg{width:26px;height:26px}
+.pw-l small{display:block;margin-top:2px;font-size:12px;font-weight:400;color:var(--ink-3)}
 .pw-arr.top svg{transform:rotate(180deg)}
 @keyframes pwB{0%,100%{margin-bottom:0;margin-top:0}50%{margin-bottom:-8px;margin-top:-8px}}
 </style>
@@ -502,6 +504,10 @@ var PWA = (function(){
   var CHROME_OK = !INAPP && (IOS ? /CriOS|EdgiOS/.test(ua)
     : (/Google Chrome|Microsoft Edge|HeadlessChrome/.test(BR) || PURE || (!UAD && /Chrome\/|Edg\//.test(ua) && !/OPR\/|SamsungBrowser|Whale|YaBrowser|Firefox|FxiOS/i.test(ua))));
   var URL0 = location.href.split('#')[0];
+  /* 아이폰 : 사파리로 넘길 때 쓰는 주소 (?install=1 → 사파리에서 열리면 설치 안내를 바로 띄움) */
+  var IURL = URL0.split('?')[0] + '?install=2';   /* install=2 : 동의를 마치고 넘어온 경우 → 최종 설치 화면 바로 */
+  var SV = +((/Version\/(\d+)/.exec(ua) || [])[1] || 0);   /* 사파리 버전 : 26 이상은 공유 버튼이 ⋯(더보기) 안에 있음 */
+  var KK = /KAKAOTALK/i.test(ua), ICR = IOS && !INAPP && /CriOS|EdgiOS/.test(ua);   /* 카카오톡 안 브라우저 · 아이폰 크롬/엣지 */
   function esc(t){ return String(t).replace(/[&<>"']/g, function(c){ return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
   var CHROME_DL = IOS ? 'https://apps.apple.com/kr/app/id535886823' : AND ? 'https://play.google.com/store/apps/details?id=com.android.chrome' : 'https://www.google.com/intl/ko/chrome/';
   function chromeOpenUrl(){
@@ -509,9 +515,11 @@ var PWA = (function(){
     if (IOS) return URL0.replace(/^https:\/\//, 'googlechromes://').replace(/^http:\/\//, 'googlechrome://');
     return '';
   }
+  function safariUrl(){ return KK ? 'kakaotalk://web/openExternal?url=' + encodeURIComponent(IURL) : 'x-safari-' + IURL; }   /* 사파리로 여는 주소 (카카오톡 : 외부 브라우저 열기 · 그 외 : 사파리 전용 주소, iOS 17 이상) */
   function copyUrl(btn){
-    var done = function(){ btn.querySelector('span').innerHTML = '주소를 복사했습니다<small>크롬 주소창에 붙여넣기 (Ctrl+V) 하세요</small>'; };
-    try { navigator.clipboard.writeText(URL0).then(done, function(){ prompt('주소를 복사해 주세요.', URL0); }); } catch(e){ prompt('주소를 복사해 주세요.', URL0); }
+    var done = function(){ btn.querySelector('span').innerHTML = IOS ? '주소를 복사했습니다<small>사파리를 열어 주소창에 붙여넣기 하세요</small>' : '주소를 복사했습니다<small>크롬 주소창에 붙여넣기 (Ctrl+V) 하세요</small>'; };
+    var u = IOS ? IURL : URL0;
+    try { navigator.clipboard.writeText(u).then(done, function(){ prompt('주소를 복사해 주세요.', u); }); } catch(e){ prompt('주소를 복사해 주세요.', u); }
   }
   function standalone(){
     try { return navigator.standalone === true || ['standalone', 'fullscreen', 'minimal-ui', 'window-controls-overlay'].some(function(m){ return matchMedia('(display-mode: ' + m + ')').matches; }); } catch(e){ return false; }
@@ -554,36 +562,54 @@ var PWA = (function(){
       $('pwGo').textContent = '설치했어요';
       $('pwGo').onclick = function(){ hide(); accepted(); };
       $('pwF').textContent = '잠시 후 [앱 설치하기] 버튼으로 바뀌면 바로 설치할 수 있습니다 · [설치 안 함] = 다시 묻지 않음';
-    } else if (mode === 'ios' && SAF) {   /* 아이폰·아이패드 사파리 : 필수 동의 후 홈 화면에 추가 안내 */
-      $('pwT').textContent = '앱으로 설치하시겠어요?';
-      $('pwS').textContent = 'HD 견적 · 홈 화면 아이콘으로 바로 실행';
-      $('pwL').innerHTML = li(['로그인·데이터·업데이트는 <b>지금과 동일</b> · PC와 견적 저장 연동', '설치는 사파리 <b>공유 → 홈 화면에 추가</b> (30초)']);
+    } else if (mode === 'ios') {   /* 아이폰·아이패드 (사파리 · 크롬 · 카카오톡 등 모두) : 필수 동의 → [다운로드] → 최종 설치 화면 */
+      $('pwT').textContent = 'HD 견적 앱 설치';
+      $('pwS').textContent = '홈 화면 아이콘으로 바로 실행';
+      $('pwL').innerHTML = li(['로그인·데이터·업데이트는 <b>웹과 동일</b> · PC와 견적 저장 연동', '<b>[다운로드]</b>를 누르면 설치 화면이 바로 열립니다']);
       $('pwA').innerHTML = '<label class="pw-agree" id="pwAgL"><input type="checkbox" id="pwAg"><span><b>[필수]</b> 이 기기 홈 화면에 <b style="color:inherit">HD 견적</b> 앱 아이콘을 추가하고, 로그인 이메일을 이 기기에 저장하는 것에 동의합니다.</span></label>';
       $('pwA').hidden = false;
-      $('pwGo').textContent = '동의하고 설치'; $('pwGo').disabled = true;
+      $('pwGo').textContent = '다운로드'; $('pwGo').disabled = true;
       $('pwAg').onchange = function(){ $('pwGo').disabled = !this.checked; $('pwAgL').classList.toggle('on', this.checked); };
-      $('pwGo').onclick = function(){ if (!$('pwAg').checked) return; setLocal({agree: Date.now()}); show('ios2'); };
+      $('pwGo').onclick = function(){
+        if (!$('pwAg').checked) return; setLocal({agree: Date.now()});
+        if (SAF || ICR){ show('ios2'); return; }
+        show('iosx');   /* 카카오톡 등 앱 안 브라우저 : 사파리를 바로 띄움 (안 열리면 화면의 버튼·주소 복사) */
+        try { location.href = safariUrl(); } catch(e){}
+      };
     } else if (mode === 'ios2') {
       var PAD = /iPad/i.test(ua) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(ua));
       var SH = '<svg class="pw-sh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8.5H6.5a1 1 0 0 0-1 1V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.5a1 1 0 0 0-1-1H16"/><path d="M12 3v11"/><path d="m8.5 6.5 3.5-3.5 3.5 3.5"/></svg>';
       $('pwT').textContent = '홈 화면에 추가해 주세요';
       $('pwS').textContent = '아래 순서대로 누르면 아이콘이 생깁니다';
       $('pwL').className = 'pw-l pw-n';
-      $('pwL').innerHTML = li([(PAD ? '화면 <b>오른쪽 위</b>' : '화면 <b>아래</b>') + ' 공유 버튼 ' + SH + ' 누르기', '<b>홈 화면에 추가</b> → 오른쪽 위 <b>[추가]</b>', '홈 화면 <b>HD 견적</b> 아이콘으로 실행 → 처음 1번 로그인']);
+      var V26 = SV >= 26 || ICR;
+      if (ICR){
+        $('pwS').textContent = '크롬에서 아래 순서대로 누르면 아이콘이 생깁니다';
+        $('pwA').innerHTML = '<a href="' + esc(safariUrl()) + '"><span>사파리로 열어서 설치<small>[홈 화면에 추가]가 안 보일 때</small></span><i>↗</i></a>'; $('pwA').hidden = false;
+      }
+      $('pwL').innerHTML = li(ICR
+        ? ['주소창 오른쪽 <b>공유 버튼</b> ' + SH + ' 누르기', '목록을 올려 <b>홈 화면에 추가</b> 누르기', '<b>[추가]</b> → 홈 화면 <b>HD 견적</b> 아이콘으로 실행 → 처음 1번 로그인']
+        : V26
+        ? [(PAD ? '화면 <b>위쪽</b>' : '화면 <b>아래쪽</b> 주소창 옆') + ' <b>⋯ (더보기)</b> 버튼 → <b>공유</b> ' + SH + ' 누르기<br><small>공유 버튼 ' + SH + ' 이 바로 보이면 그것을 누르세요</small>', '목록을 올려 <b>홈 화면에 추가</b> 누르기<br><small>안 보이면 <b>더 보기</b>를 눌러 찾으세요</small>', '오른쪽 위 <b>[추가]</b> → 홈 화면 <b>HD 견적</b> 아이콘으로 실행 → 처음 1번 로그인']
+        : [(PAD ? '화면 <b>오른쪽 위</b>' : '화면 <b>아래</b>') + ' 공유 버튼 ' + SH + ' 누르기', '<b>홈 화면에 추가</b> → 오른쪽 위 <b>[추가]</b>', '홈 화면 <b>HD 견적</b> 아이콘으로 실행 → 처음 1번 로그인']);
       $('pwNo').textContent = '닫기'; $('pwNo').onclick = hide;
       $('pwGo').textContent = '추가했어요';
       $('pwGo').onclick = function(){ hide(); accepted(); };
       $('pwF').textContent = '목록에 없으면 공유 메뉴를 위로 올려 [홈 화면에 추가]를 찾아 주세요';
-      $('pwArr').className = 'pw-arr' + (PAD ? ' top' : ''); $('pwArr').hidden = false;
-    } else if (mode === 'ios') {
-      $('pwT').textContent = '앱으로 설치하시겠어요?';
-      $('pwS').textContent = SAF ? 'HD 견적 · 사파리 공유 메뉴에서 홈 화면에 추가' : '아이폰·아이패드는 사파리에서 열어야 홈 화면에 설치됩니다';
-      $('pwL').innerHTML = li(SAF
-        ? ['화면 아래(또는 위) <b>공유 버튼(□↑)</b> 누르기', '목록에서 <b>홈 화면에 추가</b> → 오른쪽 위 <b>[추가]</b>', '홈 화면의 <b>HD 견적</b> 아이콘으로 실행 · 로그인 화면부터 시작', '이미 추가했다면 <b>[설치했어요]</b>']
-        : ['<b>[주소 복사]</b> → <b>사파리</b> 주소창에 붙여넣기 → 같은 이메일로 로그인', '사파리 <b>공유 버튼(□↑) → 홈 화면에 추가 → [추가]</b>', '홈 화면의 <b>HD 견적</b> 아이콘으로 실행']);
-      if (!SAF){ $('pwA').innerHTML = '<button type="button" data-pw="copy"><span>주소 복사<small>사파리 주소창에 붙여넣기 하세요</small></span><i>⧉</i></button>'; $('pwA').hidden = false; [].forEach.call($('pwA').querySelectorAll('[data-pw="copy"]'), function(b){ b.onclick = function(){ copyUrl(b); }; }); }
+      $('pwArr').className = 'pw-arr' + (PAD ? ' top' : ''); $('pwArr').hidden = V26;   /* iOS 26 이상 : 버튼 위치가 설정마다 달라 화살표 생략 */
+    } else if (mode === 'iosx') {   /* 카카오톡 등 앱 안 브라우저 → 사파리로 넘김 (자동으로 안 열렸을 때 누르는 버튼) */
+      $('pwT').textContent = '사파리에서 설치가 이어집니다';
+      $('pwS').textContent = KK ? '카카오톡 안에서는 설치가 안 되어 사파리를 엽니다' : '아이폰은 사파리에서 열어야 홈 화면에 설치됩니다';
+      $('pwL').className = 'pw-l pw-n';
+      $('pwL').innerHTML = li(['사파리가 자동으로 열립니다 <small>안 열리면 아래 <b>[사파리로 열기]</b>를 누르세요</small>', '사파리에 뜨는 <b>설치 화면</b>대로 <b>홈 화면에 추가</b>', '홈 화면 <b>HD 견적</b> 아이콘으로 실행 → 처음 1번 로그인']);
+      $('pwA').innerHTML = '<a class="pri" href="' + esc(safariUrl()) + '"><span>사파리로 열기<small>사파리에서 설치 화면이 바로 열립니다</small></span><i>↗</i></a>' +
+        '<button type="button" data-pw="copy"><span>주소 복사<small>사파리 주소창에 붙여넣기 하세요</small></span><i>⧉</i></button>';
+      $('pwA').hidden = false;
+      [].forEach.call($('pwA').querySelectorAll('[data-pw="copy"]'), function(b){ b.onclick = function(){ copyUrl(b); }; });
+      $('pwNo').textContent = '닫기'; $('pwNo').onclick = hide;
       $('pwGo').textContent = '설치했어요';
       $('pwGo').onclick = function(){ hide(); accepted(); };
+      $('pwF').textContent = '[사파리로 열기]가 안 되면 [주소 복사] 후 사파리 주소창에 붙여넣기 해주세요';
     } else if (mode === 'other') {
       $('pwT').textContent = MOB ? '크롬에서 앱을 설치해 주세요' : '크롬에서 PC 앱을 설치해 주세요';
       $('pwS').textContent = INAPP ? '카카오톡 등 앱 안의 브라우저에서는 앱 설치가 되지 않습니다' : '지금 브라우저에서는 앱 설치가 되지 않습니다';
@@ -643,7 +669,16 @@ var PWA = (function(){
   $('gInst').textContent = MOB ? '앱으로 설치' : 'PC 앱으로 설치';
   $('gInst').onclick = install;
   if (CHROME_OK && !MOB && !standalone()) inst(true);
-  if (IOS && !standalone()) { $('gInst').textContent = SAF ? '앱으로 설치 (홈 화면에 추가)' : '사파리에서 앱으로 설치 · 안내'; $('gInst').onclick = function(){ show('ios'); }; inst(true); }
+  if (IOS && !standalone()) {
+    $('gInst').textContent = '📱 아이폰 앱 설치 (홈 화면에 아이콘 만들기)'; $('gInst').classList.add('big'); $('gInst').onclick = function(){ show('ios'); }; inst(true);
+    var q = /[?&]install=([12])/.exec(location.search), lc = local();
+    if (q) { try { history.replaceState(null, '', location.pathname + location.hash); } catch(e){} }
+    /* 링크로 들어오면 바로 설치 안내 : 사파리로 넘어온 경우(install=2) = 최종 설치 화면 · 그 외 처음 접속 = 필수 동의 + [다운로드] ([설치 안 함]·[추가했어요] 뒤에는 다시 안 뜸) */
+    if (q || (!lc.declined && !lc.installed)) setTimeout(function(){
+      if (standalone() || BLOCKED || LS.get(K.blk) || CUR !== '') return;
+      shown = true; show(q && q[1] === '2' && (SAF || ICR) ? 'ios2' : 'ios');
+    }, 500);
+  }
   else if (!CHROME_OK && !standalone()) { $('gInst').textContent = MOB ? '크롬에서 열기 · 크롬 설치 안내' : '크롬 다운로드 · PC 앱 설치 안내'; $('gInst').onclick = function(){ show('other'); }; inst(true); }
   window.addEventListener('beforeinstallprompt', function(e){
     e.preventDefault(); DP = e;
