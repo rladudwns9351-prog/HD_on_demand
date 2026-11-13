@@ -370,10 +370,16 @@ function launch(){
 /* 화면 자동 업데이트 : 관리자가 화면 파일을 바꾸면 안내 후 새로 열기 (supabase_appver.sql · 없으면 조용히 건너뜀) */
 var APPV = '', UPDATING = false, DVT = null, LEAVING = false;
 window.addEventListener('beforeunload', function(){ LEAVING = true; }); window.addEventListener('pagehide', function(){ LEAVING = true; });
-function checkAppVer(){
+/* 견적 작성 화면(특판·대리점 견적요청 · 펀딩/발주요청 · 예상견적산출)을 쓰는 중이면 새로 열지 않고 미뤄 둠 (입력 내용 보호)
+   → 화면(앱)이 API.hold() 로 알려 주고, 다른 탭으로 옮기면 API.flush() 로 미뤄 둔 업데이트를 바로 반영 */
+var PENDV = false;
+function checkAppVer(force){
   if (!SESS || !MOUNTED || UPDATING || !APPV) return;
   rpc('qw_app_ver', {p_token: SESS.token}).then(function(r){
     if (!r || !r.ok || !r.ver || r.ver === APPV) return;
+    if (UPDATING) return;
+    if (!force){ var held = false; try { held = typeof API.hold === 'function' && !!API.hold(); } catch(e){} if (held){ PENDV = true; return; } }
+    PENDV = false;
     UPDATING = true; clearInterval(HB); clearInterval(DVT);
     $('updT').textContent = '화면을 업데이트하고 있습니다'; $('updS').innerHTML = '관리자가 새 화면을 반영했습니다.<br>잠시 후 자동으로 새 화면이 열립니다.'; $('updBar').style.width = '0%'; $('updPct').textContent = ''; $('upd').hidden = false;
     try { sessionStorage.setItem('qw_app', '1'); } catch(e){}
@@ -469,6 +475,8 @@ var API = {
   token: function(){ return SESS ? SESS.token : null; },
   pwa: {standalone: function(){ return PWA.standalone(); }, open: function(){ PWA.open(); }},
   adminToken: adminToken,
+  hold: null,   /* 화면(앱)이 넣는 함수 : true 를 돌려주면 화면 자동 업데이트를 미룸 */
+  flush: function(){ if (PENDV) checkAppVer(true); },   /* 미뤄 둔 화면 업데이트 반영 */
   adminRpc: function(fn, args){ return adminToken().then(function(t){ return rpc(fn, args || {}, t); }); },
   uploadApp: uploadApp,
   logout: logout,
